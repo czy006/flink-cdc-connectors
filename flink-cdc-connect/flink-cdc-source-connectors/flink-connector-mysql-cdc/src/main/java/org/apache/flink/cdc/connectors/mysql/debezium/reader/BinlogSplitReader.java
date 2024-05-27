@@ -20,6 +20,7 @@ package org.apache.flink.cdc.connectors.mysql.debezium.reader;
 import org.apache.flink.cdc.common.annotation.VisibleForTesting;
 import org.apache.flink.cdc.connectors.mysql.debezium.task.MySqlBinlogSplitReadTask;
 import org.apache.flink.cdc.connectors.mysql.debezium.task.context.StatefulTaskContext;
+import org.apache.flink.cdc.connectors.mysql.source.metrics.MysqlDebeziumStreamingMetric;
 import org.apache.flink.cdc.connectors.mysql.source.offset.BinlogOffset;
 import org.apache.flink.cdc.connectors.mysql.source.split.FinishedSnapshotSplitInfo;
 import org.apache.flink.cdc.connectors.mysql.source.split.MySqlBinlogSplit;
@@ -146,6 +147,7 @@ public class BinlogSplitReader implements DebeziumReader<SourceRecords, MySqlSpl
     @Override
     public Iterator<SourceRecords> pollSplitRecords() throws InterruptedException {
         checkReadException();
+        reportStreamingChangeEventSourceMetrics();
         final List<SourceRecord> sourceRecords = new ArrayList<>();
         if (currentTaskRunning) {
             List<DataChangeEvent> batch = queue.poll();
@@ -358,5 +360,30 @@ public class BinlogSplitReader implements DebeziumReader<SourceRecords, MySqlSpl
     @VisibleForTesting
     MySqlBinlogSplitReadTask getBinlogSplitReadTask() {
         return binlogSplitReadTask;
+    }
+
+    private void reportStreamingChangeEventSourceMetrics() {
+        MySqlStreamingChangeEventSourceMetrics metric =
+                (MySqlStreamingChangeEventSourceMetrics)
+                        statefulTaskContext.getStreamingChangeEventSourceMetrics();
+        MysqlDebeziumStreamingMetric flinkMetrics =
+                statefulTaskContext.getMysqlDebeziumStreamingMetric();
+
+        flinkMetrics.setMillisecondsSinceLastEvent(metric.getMilliSecondsSinceLastEvent());
+        flinkMetrics.setMilliSecondsBehindSource(metric.getMilliSecondsBehindSource());
+
+        flinkMetrics.setTotalNumberOfEventsSeen(metric.getTotalNumberOfEventsSeen());
+        flinkMetrics.setTotalNumberOfCreateEventsSeen(metric.getTotalNumberOfCreateEventsSeen());
+        flinkMetrics.setTotalNumberOfUpdateEventsSeen(metric.getTotalNumberOfUpdateEventsSeen());
+        flinkMetrics.setTotalNumberOfDeleteEventsSeen(metric.getTotalNumberOfDeleteEventsSeen());
+
+        flinkMetrics.setQueueRemainingCapacity(metric.getQueueRemainingCapacity());
+        flinkMetrics.setNumberOfDisconnects(metric.getNumberOfDisconnects());
+
+        flinkMetrics.setNumberOfNotWellFormedTransactions(
+                metric.getNumberOfNotWellFormedTransactions());
+        flinkMetrics.setNumberOfEventsFiltered(metric.getNumberOfEventsFiltered());
+        flinkMetrics.setNumberOfSkippedEvents(metric.getNumberOfSkippedEvents());
+        flinkMetrics.setNumberOfErroneousEvents(metric.getNumberOfErroneousEvents());
     }
 }

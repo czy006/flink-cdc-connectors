@@ -18,6 +18,7 @@
 package org.apache.flink.cdc.connectors.mysql.source.reader;
 
 import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.cdc.connectors.mysql.source.metrics.MysqlDebeziumStreamingMetric;
 
 /**
  * A wrapper class that wraps {@link SourceReaderContext} for sharing message between {@link
@@ -26,11 +27,15 @@ import org.apache.flink.api.connector.source.SourceReaderContext;
 public class MySqlSourceReaderContext {
 
     private final SourceReaderContext sourceReaderContext;
+    private final MysqlDebeziumStreamingMetric mysqlDebeziumStreamingMetric;
     private volatile boolean isBinlogSplitReaderSuspended;
     private volatile boolean hasAssignedBinlogSplit;
 
-    public MySqlSourceReaderContext(final SourceReaderContext sourceReaderContext) {
+    public MySqlSourceReaderContext(
+            final SourceReaderContext sourceReaderContext,
+            MysqlDebeziumStreamingMetric mysqlDebeziumStreamingMetric) {
         this.sourceReaderContext = sourceReaderContext;
+        this.mysqlDebeziumStreamingMetric = mysqlDebeziumStreamingMetric;
         this.isBinlogSplitReaderSuspended = false;
         this.hasAssignedBinlogSplit = false;
     }
@@ -57,5 +62,9 @@ public class MySqlSourceReaderContext {
 
     public void setHasAssignedBinlogSplit(boolean hasAssignedBinlogSplit) {
         this.hasAssignedBinlogSplit = hasAssignedBinlogSplit;
+    }
+
+    public MysqlDebeziumStreamingMetric getMysqlDebeziumStreamingMetric() {
+        return mysqlDebeziumStreamingMetric;
     }
 }

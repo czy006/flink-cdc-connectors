@@ -41,6 +41,7 @@ import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfig;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfigFactory;
 import org.apache.flink.cdc.connectors.mysql.source.enumerator.MySqlSourceEnumerator;
 import org.apache.flink.cdc.connectors.mysql.source.metrics.MySqlSourceReaderMetrics;
+import org.apache.flink.cdc.connectors.mysql.source.metrics.MysqlDebeziumStreamingMetric;
 import org.apache.flink.cdc.connectors.mysql.source.reader.MySqlRecordEmitter;
 import org.apache.flink.cdc.connectors.mysql.source.reader.MySqlSourceReader;
 import org.apache.flink.cdc.connectors.mysql.source.reader.MySqlSourceReaderContext;
@@ -172,9 +173,12 @@ public class MySqlSource<T>
 
         final MySqlSourceReaderMetrics sourceReaderMetrics =
                 new MySqlSourceReaderMetrics(metricGroup);
+        final MysqlDebeziumStreamingMetric mysqlDebeziumStreamingMetric =
+                new MysqlDebeziumStreamingMetric(metricGroup);
         sourceReaderMetrics.registerMetrics();
+        mysqlDebeziumStreamingMetric.registerMetrics();
         MySqlSourceReaderContext mySqlSourceReaderContext =
-                new MySqlSourceReaderContext(readerContext);
+                new MySqlSourceReaderContext(readerContext, mysqlDebeziumStreamingMetric);
         Supplier<MySqlSplitReader> splitReaderSupplier =
                 () ->
                         new MySqlSplitReader(

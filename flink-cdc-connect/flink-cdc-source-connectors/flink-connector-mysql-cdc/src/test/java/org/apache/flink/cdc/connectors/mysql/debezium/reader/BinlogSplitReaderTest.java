@@ -26,6 +26,7 @@ import org.apache.flink.cdc.connectors.mysql.source.assigners.MySqlBinlogSplitAs
 import org.apache.flink.cdc.connectors.mysql.source.assigners.MySqlSnapshotSplitAssigner;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfig;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfigFactory;
+import org.apache.flink.cdc.connectors.mysql.source.metrics.MysqlDebeziumStreamingMetric;
 import org.apache.flink.cdc.connectors.mysql.source.offset.BinlogOffset;
 import org.apache.flink.cdc.connectors.mysql.source.split.FinishedSnapshotSplitInfo;
 import org.apache.flink.cdc.connectors.mysql.source.split.MySqlBinlogSplit;
@@ -40,6 +41,7 @@ import org.apache.flink.cdc.connectors.mysql.testutils.MySqlVersion;
 import org.apache.flink.cdc.connectors.mysql.testutils.RecordsFormatter;
 import org.apache.flink.cdc.connectors.mysql.testutils.UniqueDatabase;
 import org.apache.flink.core.testutils.CommonTestUtils;
+import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.ExceptionUtils;
@@ -108,12 +110,15 @@ public class BinlogSplitReaderTest extends MySqlSourceTestBase {
 
     private BinaryLogClient binaryLogClient;
     private MySqlConnection mySqlConnection;
+    private static final MysqlDebeziumStreamingMetric mysqlDebeziumStreamingMetric =
+            new MysqlDebeziumStreamingMetric(UnregisteredMetricsGroup.createCacheMetricGroup());
 
     @BeforeClass
     public static void beforeClass() {
         LOG.info("Starting MySql8 containers...");
         Startables.deepStart(Stream.of(MYSQL8_CONTAINER)).join();
         LOG.info("Container MySql8 is started.");
+        mysqlDebeziumStreamingMetric.registerMetrics();
     }
 
     @AfterClass
@@ -900,7 +905,11 @@ public class BinlogSplitReaderTest extends MySqlSourceTestBase {
                 skipValidStartingOffset
                         ? new TestStatefulTaskContext(
                                 sourceConfig, binaryLogClient, mySqlConnection)
-                        : new StatefulTaskContext(sourceConfig, binaryLogClient, mySqlConnection),
+                        : new StatefulTaskContext(
+                                sourceConfig,
+                                binaryLogClient,
+                                mySqlConnection,
+                                mysqlDebeziumStreamingMetric),
                 0);
     }
 
@@ -966,7 +975,11 @@ public class BinlogSplitReaderTest extends MySqlSourceTestBase {
             TableId binlogChangeTableId)
             throws Exception {
         final StatefulTaskContext statefulTaskContext =
-                new StatefulTaskContext(sourceConfig, binaryLogClient, mySqlConnection);
+                new StatefulTaskContext(
+                        sourceConfig,
+                        binaryLogClient,
+                        mySqlConnection,
+                        mysqlDebeziumStreamingMetric);
         final SnapshotSplitReader snapshotSplitReader =
                 new SnapshotSplitReader(statefulTaskContext, 0);
 
@@ -1251,7 +1264,7 @@ public class BinlogSplitReaderTest extends MySqlSourceTestBase {
                 MySqlSourceConfig sourceConfig,
                 BinaryLogClient binaryLogClient,
                 MySqlConnection connection) {
-            super(sourceConfig, binaryLogClient, connection);
+            super(sourceConfig, binaryLogClient, connection, mysqlDebeziumStreamingMetric);
         }
 
         @Override

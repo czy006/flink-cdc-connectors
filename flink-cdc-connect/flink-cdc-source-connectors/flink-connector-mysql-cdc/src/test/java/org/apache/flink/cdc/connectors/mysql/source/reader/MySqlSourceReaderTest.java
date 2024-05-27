@@ -30,6 +30,7 @@ import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfig;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfigFactory;
 import org.apache.flink.cdc.connectors.mysql.source.events.FinishedSnapshotSplitsAckEvent;
 import org.apache.flink.cdc.connectors.mysql.source.metrics.MySqlSourceReaderMetrics;
+import org.apache.flink.cdc.connectors.mysql.source.metrics.MysqlDebeziumStreamingMetric;
 import org.apache.flink.cdc.connectors.mysql.source.offset.BinlogOffset;
 import org.apache.flink.cdc.connectors.mysql.source.split.MySqlBinlogSplit;
 import org.apache.flink.cdc.connectors.mysql.source.split.MySqlSnapshotSplit;
@@ -583,8 +584,10 @@ public class MySqlSourceReaderTest extends MySqlSourceTestBase {
                                 new ForwardDeserializeSchema(),
                                 new MySqlSourceReaderMetrics(metricGroup),
                                 configuration.isIncludeSchemaChanges());
+        MysqlDebeziumStreamingMetric mysqlDebeziumStreamingMetric =
+                new MysqlDebeziumStreamingMetric(metricGroup);
         final MySqlSourceReaderContext mySqlSourceReaderContext =
-                new MySqlSourceReaderContext(readerContext);
+                new MySqlSourceReaderContext(readerContext, mysqlDebeziumStreamingMetric);
         return new MySqlSourceReader<>(
                 elementsQueue,
                 () -> createSplitReader(configuration, mySqlSourceReaderContext, snapshotHooks),

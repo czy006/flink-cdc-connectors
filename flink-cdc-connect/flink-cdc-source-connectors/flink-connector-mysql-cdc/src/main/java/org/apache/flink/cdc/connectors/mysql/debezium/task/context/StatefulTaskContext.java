@@ -22,8 +22,10 @@ import org.apache.flink.cdc.connectors.mysql.debezium.EmbeddedFlinkDatabaseHisto
 import org.apache.flink.cdc.connectors.mysql.debezium.dispatcher.EventDispatcherImpl;
 import org.apache.flink.cdc.connectors.mysql.debezium.dispatcher.SignalEventDispatcher;
 import org.apache.flink.cdc.connectors.mysql.source.config.MySqlSourceConfig;
+import org.apache.flink.cdc.connectors.mysql.source.metrics.MysqlDebeziumStreamingMetric;
 import org.apache.flink.cdc.connectors.mysql.source.offset.BinlogOffset;
 import org.apache.flink.cdc.connectors.mysql.source.split.MySqlSplit;
+import org.apache.flink.cdc.debezium.metric.DebeziumSourceReaderMetrics;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import io.debezium.connector.AbstractSourceInfo;
@@ -91,6 +93,7 @@ public class StatefulTaskContext {
     private TopicSelector<TableId> topicSelector;
     private SnapshotChangeEventSourceMetrics<MySqlPartition> snapshotChangeEventSourceMetrics;
     private StreamingChangeEventSourceMetrics<MySqlPartition> streamingChangeEventSourceMetrics;
+    private MysqlDebeziumStreamingMetric mysqlDebeziumStreamingMetric;
     private EventDispatcherImpl<TableId> dispatcher;
     private EventDispatcher.SnapshotReceiver<MySqlPartition> snapshotReceiver;
     private SignalEventDispatcher signalEventDispatcher;
@@ -100,13 +103,18 @@ public class StatefulTaskContext {
     public StatefulTaskContext(
             MySqlSourceConfig sourceConfig,
             BinaryLogClient binaryLogClient,
-            MySqlConnection connection) {
+            MySqlConnection connection,
+            DebeziumSourceReaderMetrics debeziumSourceReaderMetrics) {
         this.sourceConfig = sourceConfig;
         this.connectorConfig = sourceConfig.getMySqlConnectorConfig();
         this.schemaNameAdjuster = SchemaNameAdjuster.create();
         this.metadataProvider = new MySqlEventMetadataProvider();
         this.binaryLogClient = binaryLogClient;
         this.connection = connection;
+        if (debeziumSourceReaderMetrics instanceof MysqlDebeziumStreamingMetric) {
+            this.mysqlDebeziumStreamingMetric =
+                    (MysqlDebeziumStreamingMetric) debeziumSourceReaderMetrics;
+        }
     }
 
     public void configure(MySqlSplit mySqlSplit) {
@@ -422,5 +430,9 @@ public class StatefulTaskContext {
 
     public SchemaNameAdjuster getSchemaNameAdjuster() {
         return schemaNameAdjuster;
+    }
+
+    public MysqlDebeziumStreamingMetric getMysqlDebeziumStreamingMetric() {
+        return mysqlDebeziumStreamingMetric;
     }
 }
